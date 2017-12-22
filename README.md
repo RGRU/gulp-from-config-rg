@@ -150,10 +150,15 @@ var gulp = require('gulp'),
                 "transform": ["ractivate"] // Set extra browserify transforms (make sure that transform installed!)
                 "file": "prod.js" // You can specify file name. Will be task name by default ('production')
             },
-            "watch": [ // if array is empty will watch src files
-                "/src/js/*.js", // watch changes on source files
-                "/src/js/_*.js"
-            ],
+            "watch": {
+                // watch if environment: dev
+                dev: [ // if array is empty will watch src files
+                    "/src/js/*.js", // watch changes on source files
+                    "/src/js/_*.js"
+                ],
+                // unwatch if environment: prod
+                prod: false
+            },
             "src": {
                 "include": [
                     "/src/js/*.js" // will be processed
@@ -183,3 +188,98 @@ var gulp = require('gulp'),
 };
 ```
 > Example production.json
+
+## watch option examples
+
+```javascript
+{
+    ...
+    "subTasks": [
+        "watch": true
+    ]
+    ...
+}
+```
+> Example default watch
+
+```javascript
+{
+    ...
+    "subTasks": [
+        "watch": {
+            dev: true,
+            prod: false
+        }
+    ]
+    ...
+}
+```
+> Example watch in dev environment
+
+```javascript
+{
+    ...
+    "subTasks": [
+        "watch": {
+            dev: false, // unwatch in development mode
+            prod: [ // if array is empty will watch src files
+                "/src/js/*.js", // watch changes on source files
+                "/src/js/_*.js"
+            ]
+        }
+    ]
+    ...
+}
+```
+> Example watch in prod environment
+
+```javascript
+{
+    ...
+    "subTasks": [
+        "watch":  [ // if array is empty will watch src files
+            "/src/js/*.js", // watch changes on source files
+            "/src/js/_*.js"
+        ]
+    ]
+    ...
+}
+```
+> Example watch must be array
+
+## browserify option example
+```javascript
+{
+    ...
+    "subTasks": [
+        "watch": {
+            dev: false, // unwatch in development mode
+            prod: [ // if array is empty will watch src files
+                "/src/js/*.js", // watch changes on source files
+                "/src/js/_*.js"
+            ]
+        }
+    ],
+    "browserify": {
+        "transforms": [
+          {
+            "name": "eslintify"
+          },
+          {
+            "name": "ractivate",
+            "options": {
+              "extensions": [
+                ".ihtml"
+              ]
+            }
+          }
+        ],
+        "watchify": {
+          "dev": true,
+          "prod": false
+        }
+      },
+    ...
+}
+```
+> Example browserify watch
