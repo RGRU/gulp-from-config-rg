@@ -1,6 +1,6 @@
-# gulp-from-config
+# gulp-from-config-rg
 
-**`gulp-from-config`** provides ability to run gulp tasks from configs.
+**`gulp-from-config-rg`** provides ability to run gulp tasks from configs.
 
 > Version for rg stack, fork from [https://github.com/nanomen/gulp-from-config](https://github.com/nanomen/gulp-from-config)
 
@@ -35,7 +35,7 @@ Write tasks in JSON configs and place them in ./configs or any other folder
 
 ```javascript
 
-// Load gulp and gulp-from-config
+// Load gulp and gulp-from-config-rg
 var gulp = require('gulp'),
     gulpFromConfig = require('gulp-from-config-rg');
 
@@ -61,10 +61,10 @@ $ gulp build
 /**
  *  At the beginning load:
  *  - gulp
- *  - gulp-from-config
+ *  - gulp-from-config-rg
  */
 var gulp = require('gulp'),
-    gulpFromConfig = require('gulp-from-config')
+    gulpFromConfig = require('gulp-from-config-rg')
     tasks = []; // declare tasks list array
 
     /**
