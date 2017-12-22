@@ -1,6 +1,7 @@
 /**
  * gulp-from-config
- * @author rg team
+ * @author kystkysto
+ * @copyright kystkysto 2015
  */
 
 // Root path
@@ -204,8 +205,25 @@ function createSubTask(subTaskName, subTask, taskName, taskCompletion) {
 
     if (!subTask.browserify && typeof subTask.watch !== "undefined") {
 
-        setWatch(subTaskName, subTaskWatch, subTask);
-        watchTaks.push(subTaskWatch);
+        if (
+            // watch is true && environment: dev
+            (subTask.watch === true && subTask._env === 'dev') ||
+            // watch is array and environment: dev
+            (Array.isArray(subTask.watch) && subTask._env === 'dev') ||
+            // watch is object, have prod and dev props
+            (isObject(subTask.watch) &&
+                (
+                    (subTask.watch.prod === true && subTask._env === 'prod') ||
+                    (subTask.watch.dev === true && subTask._env === 'dev')
+                )
+            )
+        ) {
+
+            setWatch(subTaskName, subTaskWatch, subTask);
+            watchTaks.push(subTaskWatch);
+
+        }
+        
     }
 
     gulp.task(subTaskName, watchTaks, function (taskCompletion) {
@@ -296,6 +314,17 @@ function setSrc(srcPaths) {
 }
 
 /**
+ * Check for Object
+ * @param {Object} obj
+ * @return {boolean}
+ */
+function isObject(obj) {
+
+  return obj === Object(obj);
+
+}
+
+/**
  * Set browserify
  * @access private
  * @param {Object} srcPaths
@@ -308,6 +337,8 @@ function setBrowserify(srcPaths, subTask, taskName, dest) {
     var src = prepareSrc(srcPaths),
         entries = [],
         b = null;
+
+    gutil.log(subTask);
 
     if(src.length) {
 
@@ -323,14 +354,23 @@ function setBrowserify(srcPaths, subTask, taskName, dest) {
             cache: {},
             packageCache: {},
             fullPaths: false // скрываем абсолютные пути в require
-        };
+        },
+        watchifyProp = subTask.browserify.watchify;
 
         b = browserify(opt);
         b = setTransforms(b, subTask.browserify.transforms);
 
-        if(subTask.browserify.watchify) {
+        if (
+            ((watchifyProp && watchifyProp === true) && subTask._env === 'dev') ||
+            (watchifyProp && isObject(watchifyProp) &&
+                (
+                    (watchifyProp.prod === true && subTask._env === 'prod') ||
+                    (watchifyProp.dev === true && subTask._env === 'dev')
+                )
+            )
+        ) {
 
-            gutil.log('Watchify enabled:', gutil.colors.blue(true));
+            gutil.log('Watchify enabled:', subTask, gutil.colors.blue(true));
 
             b = b.plugin(watchify);
 
@@ -503,17 +543,16 @@ function setWatchPaths(subTask) {
         include = [],
         exclude = [];
 
-    if(Array.isArray(subTask.watch) && subTask.watch.length) {
+    if (Array.isArray(subTask.watch) && subTask.watch.length) {
 
         watch = watch.concat(setFullPaths(subTask.watch));
-    } else if(subTask.watch === true) {
+
+    } else if (subTask.watch === true) {
 
         include = setFullPaths(subTask.src.include);
         exclude = setFullPaths(subTask.src.exclude);
 
         watch = watch.concat(include, exclude);
-    } else {
-
 
     }
 
@@ -733,15 +772,14 @@ function setConfigs(configs, env) {
                 return false;
             }
 
-
             _configs.push(setConfigEnvironment(config, env));
 
             return true;
 
         });
 
-
         return _configs;
+
     } else {
 
         gutil.log(gutil.colors.red('Error:'),'must be array of configuration objects');
@@ -770,6 +808,8 @@ function setConfigEnvironment(config, env) {
 
                 task['plugins'] = getEnviromentPlugins(task['plugins'], env);
             }
+
+            task._env = env;
         }
     });
 
@@ -829,7 +869,7 @@ function getEnviromentFromPluginOptions(options, env) {
  */
 function selectEnviroment(item, env) {
 
-    if(item[env]) {
+    if(item[env] !== undefined) {
 
         item = item[env];
     } else {
