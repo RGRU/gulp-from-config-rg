@@ -19,7 +19,7 @@
 ```bash
 # Don't forget to install gulp globaly
 # $ sudo npm install -g gulp
-$ npm install gulp gulp-from-config
+$ npm install gulp gulp-from-config-rg
 ```
 
 ## As simple as
@@ -37,7 +37,7 @@ Write tasks in JSON configs and place them in ./configs or any other folder
 
 // Load gulp and gulp-from-config
 var gulp = require('gulp'),
-    gulpFromConfig = require('gulp-from-config');
+    gulpFromConfig = require('gulp-from-config-rg');
 
     // Set config files path
     gulpFromConfig.setConfigsPath('configs');
