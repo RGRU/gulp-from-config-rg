@@ -1,0 +1,41 @@
+{
+  "name": "gulp-from-config-rg",
+  "version": "0.0.1",
+  "description": "Library that helps you to build app with gulp from config file",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RGRU/gulp-from-config-rg"
+  },
+  "keywords": [
+    "gulp",
+    "config",
+    "gulpfriendly"
+  ],
+  "author": "rg team",
+  "bugs": {
+    "url": "https://github.com/RGRU/gulp-from-config-rg/issues"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "browserify": "11.2.0",
+    "file-exists": "0.1.1",
+    "glob": "5.0.14",
+    "gulp-jshint": "1.11.2",
+    "gulp-util": "3.0.6",
+    "minimist": "^1.2.0",
+    "path": "0.12.7",
+    "vinyl-buffer": "1.0.0",
+    "vinyl-source-stream": "1.1.0",
+    "watchify": "3.5.0"
+  },
+  "devDependencies": {
+    "chai": "~3.5.0",
+    "mock-fs": "~3.9.0",
+    "rewire": "^2.5.1",
+    "sinon": "~1.17.4"
+  }
+}
