@@ -1,59 +1,54 @@
 /**
  * gulp-from-config
- * @author kystkysto
- * @copyright kystkysto 2015
+ * @author rg team
+ *
  */
 
 // Root path
-var rootPath = process.cwd(),
+var rootPath = process.cwd()
 
 // Npm modules
-    gulp,
-    path = require('path'),
-    glob = require('glob'),
-    browserify = require('browserify'),
-    watchify = require('watchify'),
-    fileExists = require('file-exists'),
-    source = require('vinyl-source-stream'),
-    buffer = require('vinyl-buffer'),
-    minimist = require('minimist'),
+var gulp
+var path = require('path')
+var glob = require('glob')
+var browserify = require('browserify')
+var watchify = require('watchify')
+var fileExists = require('file-exists')
+var source = require('vinyl-source-stream')
+var buffer = require('vinyl-buffer')
+var minimist = require('minimist')
 
 // Gulp plugins
-    gutil = require('gulp-util'),
-    enviroments = [
-        'dev',
-        'test',
-        'prod'
-    ];
-
+var gutil = require('gulp-util')
+var enviroments = [
+  'dev',
+  'test',
+  'prod'
+]
 
 /**
  * Create gulp tasks
  * @access private
  * @returns {Array} tasks
  */
-function addTasks(configs, taskCompletion) {
+function addTasks (configs, taskCompletion) {
+  var tasks = []
+  var subTasks
 
-    var tasks = [],
-        subTasks;
+  configs.forEach(function (config) {
+    var taskName = config.name
 
-    configs.forEach(function (config) {
+    if (taskName) {
+      subTasks = createTask(config, taskCompletion)
+      gulp.task(taskName, subTasks, function () {})
 
-        var taskName = config.name;
+      tasks.push(taskName)
+    } else {
+      gutil.log(gutil.colors.red('Error:'), 'task name must be set')
+    }
+  })
 
-        if(taskName) {
-
-            subTasks = createTask(config, taskCompletion);
-            gulp.task(taskName, subTasks, function(){});
-
-            tasks.push(taskName);
-
-        } else {
-            gutil.log(gutil.colors.red('Error:'), 'task name must be set');
-        }
-    });
-
-    return tasks;
+  return tasks
 }
 
 /**
@@ -62,42 +57,36 @@ function addTasks(configs, taskCompletion) {
  * @param {Object} config
  * @returns {Array}
  */
-function createTask(config, taskCompletion) {
+function createTask (config, taskCompletion) {
+  var subTasks = []
+  var subTaskName = ''
+  var storedTask = {}
+  var tmp = null
 
-    var subTasks = [],
-        subTaskName = '',
-        storedTask = {},
-        tmp = null;
+  if (Array.isArray(config.subTasks) && config.subTasks.length) {
+    config.subTasks.forEach(function (subTask) {
+      tmp = checkForReuse(subTask, storedTask)
 
-    if(Array.isArray(config.subTasks) && config.subTasks.length) {
+      subTask = tmp.current
+      storedTask = tmp.stored
 
-        config.subTasks.forEach(function (subTask) {
+      if (!subTask.name) {
+        subTask.name = randomTaskName()
+      }
 
-            tmp = checkForReuse(subTask, storedTask);
+      subTaskName = config.name + ':' + subTask.name
 
-            subTask = tmp.current;
-            storedTask = tmp.stored;
+      if (isSubTaskValid(subTask)) {
+        createSubTask(subTaskName, subTask, config.name, taskCompletion)
 
-            if (!subTask.name) {
-                subTask.name = randomTaskName();
-            }
+        subTasks.push(subTaskName)
+      }
+    })
+  } else {
+    gutil.log(gutil.colors.yellow('Warning:'), 'subTasks are not set')
+  }
 
-            subTaskName = config.name + ':' + subTask.name;
-
-            if (isSubTaskValid(subTask)) {
-
-                createSubTask(subTaskName, subTask, config.name, taskCompletion);
-
-                subTasks.push(subTaskName);
-            }
-
-        });
-    } else {
-
-        gutil.log(gutil.colors.yellow('Warning:'), 'subTasks are not set');
-    }
-
-    return subTasks;
+  return subTasks
 }
 
 /**
@@ -106,55 +95,39 @@ function createTask(config, taskCompletion) {
  * @param {Object} config
  * @returns {Array}
  */
-function checkForReuse(current, stored) {
+function checkForReuse (current, stored) {
+  for (var prop in current) {
+    if (current.hasOwnProperty(prop)) {
+      if (current[prop] === '~') {
+        current[prop] = stored[prop]
+      } else if (prop === 'plugins') {
+        current.plugins.forEach(function (currentPlugin, i) {
+          if (typeof currentPlugin === 'string' && currentPlugin.charAt(0) === '~') {
+            var pluginName = currentPlugin.slice(1)
 
-    for(var prop in current) {
-
-        if(current.hasOwnProperty(prop)) {
-
-            if(current[prop] === '~') {
-
-                current[prop] = stored[prop];
-
-            } else if(prop === 'plugins') {
-
-                current.plugins.forEach(function(currentPlugin, i) {
-
-                    if(typeof currentPlugin === 'string' && currentPlugin.charAt(0) === '~') {
-
-                        var pluginName = currentPlugin.slice(1);
-
-                        stored.plugins.forEach(function(storedPlugin, y) {
-
-                            if(storedPlugin.name === pluginName) {
-
-                                current.plugins[i] = storedPlugin;
-                            }
-                        });
-                    } else {
-
-                        if(stored.plugins) {
-
-                            stored.plugins.push(currentPlugin);
-                        } else {
-
-                            stored.plugins = [currentPlugin];
-                        }
-                    }
-                });
-
-
+            stored.plugins.forEach(function (storedPlugin, y) {
+              if (storedPlugin.name === pluginName) {
+                current.plugins[i] = storedPlugin
+              }
+            })
+          } else {
+            if (stored.plugins) {
+              stored.plugins.push(currentPlugin)
             } else {
-
-                stored[prop] = current[prop];
+              stored.plugins = [currentPlugin]
             }
-        }
+          }
+        })
+      } else {
+        stored[prop] = current[prop]
+      }
     }
+  }
 
-    return {
-        current: current,
-        stored: stored
-    };
+  return {
+    current: current,
+    stored: stored
+  }
 }
 
 /**
@@ -163,33 +136,29 @@ function checkForReuse(current, stored) {
  * @param {Object} task
  * @returns {boolean}
  */
-function isSubTaskValid(task) {
+function isSubTaskValid (task) {
+  if (
+    (
+      task.src === '~' ||
+      (
+        Object.keys(task.src).length &&
+        Array.isArray(task.src.include) &&
+        task.src.include.length
+      )
+    ) &&
+    (
+      task.dest ||
+      typeof task.dest === 'string'
+    )
+  ) {
+    return true
+  } else {
+    gutil.log(gutil.colors.red('Error:'),
+      'src and dest must be set for',
+      gutil.colors.cyan(task))
 
-    if (
-        (
-            task.src === '~' ||
-            (
-                Object.keys(task.src).length &&
-                Array.isArray(task.src.include) &&
-                task.src.include.length
-            )
-        )
-            &&
-        (
-            task.dest ||
-            typeof task.dest === 'string'
-        )
-    ) {
-
-        return true;
-    } else {
-
-        gutil.log(gutil.colors.red('Error:'),
-            'src and dest must be set for',
-            gutil.colors.cyan(subTaskName));
-
-        return false;
-    }
+    return false
+  }
 }
 
 /**
@@ -198,60 +167,50 @@ function isSubTaskValid(task) {
  * @param {string} subTaskName
  * @param {Object} subTask
  */
-function createSubTask(subTaskName, subTask, taskName, taskCompletion) {
+function createSubTask (subTaskName, subTask, taskName, taskCompletion) {
+  var subTaskWatch = taskName + ':watch:' + subTask.name
+  var watchTaks = []
 
-    var subTaskWatch = taskName + ':watch:' + subTask.name,
-        watchTaks = [];
+  if (!subTask.browserify && typeof subTask.watch !== 'undefined') {
+    if (
+    // watch is true && environment: dev
+    (subTask.watch === true && subTask._env === 'dev') ||
+    // watch is array and environment: dev
+    (Array.isArray(subTask.watch) && subTask._env === 'dev') ||
+    // watch is object, have prod and dev props
+    (isObject(subTask.watch) &&
+      (
+        (subTask.watch.prod === true && subTask._env === 'prod') ||
+        (subTask.watch.dev === true && subTask._env === 'dev')
+      )
+    )
+    ) {
+      setWatch(subTaskName, subTaskWatch, subTask)
+      watchTaks.push(subTaskWatch)
+    }
+  }
 
-    if (!subTask.browserify && typeof subTask.watch !== "undefined") {
+  gulp.task(subTaskName, watchTaks, function (taskCompletion) {
+    var task = {}
+    var dest = rootPath + subTask.dest
 
-        if (
-            // watch is true && environment: dev
-            (subTask.watch === true && subTask._env === 'dev') ||
-            // watch is array and environment: dev
-            (Array.isArray(subTask.watch) && subTask._env === 'dev') ||
-            // watch is object, have prod and dev props
-            (isObject(subTask.watch) &&
-                (
-                    (subTask.watch.prod === true && subTask._env === 'prod') ||
-                    (subTask.watch.dev === true && subTask._env === 'dev')
-                )
-            )
-        ) {
+    if (subTask.browserify) {
+      task = setBrowserify(subTask.src, subTask, taskName, dest)
+      task = runWatchifyTask(subTask, taskName, task, dest)
+    } else {
+      task = setSrc(subTask.src)
 
-            setWatch(subTaskName, subTaskWatch, subTask);
-            watchTaks.push(subTaskWatch);
+      task = setPipes(task, subTask.plugins, subTask.sourcemaps)
 
-        }
-        
+      task = task.pipe(gulp.dest(dest))
     }
 
-    gulp.task(subTaskName, watchTaks, function (taskCompletion) {
+    if (taskCompletion) {
+      taskCompletion(subTask)
+    }
 
-        var task = {},
-            dest = rootPath + subTask.dest;
-
-        if(subTask.browserify) {
-
-            task = setBrowserify(subTask.src, subTask, taskName, dest);
-            task = runWatchifyTask(subTask, taskName, task, dest);
-
-        } else {
-
-            task = setSrc(subTask.src);
-
-            task = setPipes(task, subTask.plugins, subTask.sourcemaps);
-
-            task = task.pipe(gulp.dest(dest));
-
-        }
-
-        if(taskCompletion) {
-            taskCompletion(subTask);
-        }
-
-        return task;
-    }.bind(this, taskCompletion));
+    return task
+  }.bind(this, taskCompletion))
 }
 
 /**
@@ -260,34 +219,30 @@ function createSubTask(subTaskName, subTask, taskName, taskCompletion) {
  * @param {Object} srcPaths
  * @returns Array
  */
-function prepareSrc(srcPaths) {
+function prepareSrc (srcPaths) {
+  var src = []
+  var include = []
 
-    var src = [],
-        include = [];
+  if (Object.keys(srcPaths).length) {
+    include = setFullPaths(srcPaths.include)
 
-    if(Object.keys(srcPaths).length) {
+    src = src.concat(include)
 
-        include = setFullPaths(srcPaths.include);
-
-        src = src.concat(include);
-
-        if(Array.isArray(srcPaths.exclude) && srcPaths.exclude.length) {
-
-            srcPaths.exclude.forEach(function (path) {
-
-                // Возможность использовать относительный путь
-                //src.push('!' + rootPath + path);
-                src.push('!' + path);
-            });
-        }
+    if (Array.isArray(srcPaths.exclude) && srcPaths.exclude.length) {
+      srcPaths.exclude.forEach(function (path) {
+        // Возможность использовать относительный путь
+        // src.push('!' + rootPath + path);
+        src.push('!' + path)
+      })
     }
+  }
 
-    src.forEach(function(srcPath, i) {
-        srcPath = minimizePath(srcPath);
-        gutil.log('Src path' + i + ':', gutil.colors.magenta(srcPath));
-    });
+  src.forEach(function (srcPath, i) {
+    srcPath = minimizePath(srcPath)
+    gutil.log('Src path' + i + ':', gutil.colors.magenta(srcPath))
+  })
 
-    return src;
+  return src
 }
 
 /**
@@ -296,8 +251,8 @@ function prepareSrc(srcPaths) {
  * @param {string} path
  * @returns {string} path
  */
-function minimizePath(path) {
-    return path.replace(rootPath, '.');
+function minimizePath (path) {
+  return path.replace(rootPath, '.')
 }
 
 /**
@@ -306,11 +261,10 @@ function minimizePath(path) {
  * @param {Object} srcPaths
  * @returns {*}
  */
-function setSrc(srcPaths) {
+function setSrc (srcPaths) {
+  var src = prepareSrc(srcPaths)
 
-    var src = prepareSrc(srcPaths);
-
-    return gulp.src(src);
+  return gulp.src(src)
 }
 
 /**
@@ -318,10 +272,8 @@ function setSrc(srcPaths) {
  * @param {Object} obj
  * @return {boolean}
  */
-function isObject(obj) {
-
-  return obj === Object(obj);
-
+function isObject (obj) {
+  return obj === Object(obj)
 }
 
 /**
@@ -332,69 +284,62 @@ function isObject(obj) {
  * @param {string} taskName
  * @returns {*}
  */
-function setBrowserify(srcPaths, subTask, taskName, dest) {
+function setBrowserify (srcPaths, subTask, taskName, dest) {
+  var src = prepareSrc(srcPaths)
+  var entries = []
+  var b = null
 
-    var src = prepareSrc(srcPaths),
-        entries = [],
-        b = null;
+  gutil.log(subTask)
 
-    gutil.log(subTask);
+  if (src.length) {
+    gutil.log('Browserify enabled:', gutil.colors.blue(true))
 
-    if(src.length) {
+    src.forEach(function (e) {
+      entries = entries.concat(glob.sync(e))
+    })
 
-        gutil.log('Browserify enabled:', gutil.colors.blue(true));
-
-        src.forEach(function(e) {
-            entries = entries.concat(glob.sync(e));
-        });
-
-        var opt = {
-            entries: entries,
-            debug: true,
-            cache: {},
-            packageCache: {},
-            fullPaths: false // скрываем абсолютные пути в require
-        },
-        watchifyProp = subTask.browserify.watchify;
-
-        b = browserify(opt);
-        b = setTransforms(b, subTask.browserify.transforms);
-
-        if (
-            ((watchifyProp && watchifyProp === true) && subTask._env === 'dev') ||
-            (watchifyProp && isObject(watchifyProp) &&
-                (
-                    (watchifyProp.prod === true && subTask._env === 'prod') ||
-                    (watchifyProp.dev === true && subTask._env === 'dev')
-                )
-            )
-        ) {
-
-            gutil.log('Watchify enabled:', subTask, gutil.colors.blue(true));
-
-            b = b.plugin(watchify);
-
-            b = b.on('update', function(file) {
-
-                console.log(file);
-                gutil.log('File:', gutil.colors.magenta(file), 'was', gutil.colors.green('changed'));
-                return runWatchifyTask(subTask, taskName, b, dest);
-
-            });
-
-            b = b.on('log', function(msg) {
-
-                gutil.log('Watchify:', gutil.colors.green(msg));
-            });
-
-            b = b.on('error', function(err) {
-
-                gutil.log(gutil.colors.red('Error:'), 'Browserify:', err.message);
-            });
-        }
+    var opt = {
+      entries: entries,
+      debug: true,
+      cache: {},
+      packageCache: {},
+      fullPaths: false // скрываем абсолютные пути в require
     }
+    var watchifyProp = subTask.browserify.watchify
 
-    return b;
+    b = browserify(opt)
+    b = setTransforms(b, subTask.browserify.transforms)
+
+    if (
+      ((watchifyProp && watchifyProp === true) && subTask._env === 'dev') ||
+      (watchifyProp && isObject(watchifyProp) &&
+        (
+          (watchifyProp.prod === true && subTask._env === 'prod') ||
+          (watchifyProp.dev === true && subTask._env === 'dev')
+        )
+      )
+    ) {
+      gutil.log('Watchify enabled:', subTask, gutil.colors.blue(true))
+
+      b = b.plugin(watchify)
+
+      b = b.on('update', function (file) {
+        console.log(file)
+        gutil.log('File:', gutil.colors.magenta(file), 'was', gutil.colors.green('changed'))
+        return runWatchifyTask(subTask, taskName, b, dest)
+      })
+
+      b = b.on('log', function (msg) {
+        gutil.log('Watchify:', gutil.colors.green(msg))
+      })
+
+      b = b.on('error', function (err) {
+        gutil.log(gutil.colors.red('Error:'), 'Browserify:', err.message)
+      })
+    }
+  }
+
+  return b
 }
 
 /**
@@ -405,23 +350,21 @@ function setBrowserify(srcPaths, subTask, taskName, dest) {
  * @param dest
  * @returns {*}
  */
-function runWatchifyTask(subTask, taskName, b, dest) {
+function runWatchifyTask (subTask, taskName, b, dest) {
+  var file = subTask.browserify.file || taskName + '.js'
 
-    var file = subTask.browserify.file || taskName + '.js';
+  b = b.bundle()
+  b = b.on('error', function (err) {
+    gutil.log(gutil.colors.red('Error:'), 'Wathify:', err.message)
+  })
+  b = b.pipe(source(file))
+  b = b.pipe(buffer())
 
-    b = b.bundle();
-    b = b.on('error', function(err) {
+  b = setPipes(b, subTask.plugins, subTask.sourcemaps)
 
-        gutil.log(gutil.colors.red('Error:'), 'Wathify:', err.message);
-    });
-    b = b.pipe(source(file));
-    b = b.pipe(buffer());
+  b = b.pipe(gulp.dest(dest))
 
-    b = setPipes(b, subTask.plugins, subTask.sourcemaps);
-
-    b = b.pipe(gulp.dest(dest));
-
-    return b;
+  return b
 }
 
 /**
@@ -431,19 +374,16 @@ function runWatchifyTask(subTask, taskName, b, dest) {
  * @param {Array} transforms
  * @returns {*}
  */
-function setTransforms(b, transforms) {
+function setTransforms (b, transforms) {
+  var _transforms = requireTransforms(transforms)
 
-    var transforms = requireTransforms(transforms);
+  if (_transforms.length) {
+    _transforms.forEach(function (transform) {
+      b = b.transform(transform)
+    })
+  }
 
-    if(transforms.length) {
-
-        transforms.forEach(function(transform) {
-
-            b = b.transform(transform);
-        });
-    }
-
-    return b;
+  return b
 }
 
 /**
@@ -451,53 +391,44 @@ function setTransforms(b, transforms) {
  * @param transforms
  * @returns {Array}
  */
-function requireTransforms(transforms) {
+function requireTransforms (transforms) {
+  var transfomsList = []
 
-    var transfomsList = [];
+  if (Array.isArray(transforms) && transforms.length) {
+    transforms.forEach(function (t) {
+      var plugin = null
+      var transformName = t
+      var transformation = null
+      var optionsMsg = gutil.colors.yellow('no options')
 
-    if(Array.isArray(transforms) && transforms.length) {
+      try {
+        if (typeof t.name === 'string') {
+          transformName = t.name
+        }
 
-        transforms.forEach(function(t) {
+        plugin = require(transformName)
 
-            var plugin = null,
-                transformName = t,
-                transformation = null,
-                optionsMsg = gutil.colors.yellow('no options');
+        transformation = plugin
 
-            try {
+        if (t.options && Object.keys(t.options).length) {
+          optionsMsg = t.options
+          transformation = [plugin, t.options]
+        }
 
-                if(typeof t.name === 'string') {
+        gutil.log('Transform:', gutil.colors.green(transformName), 'with options:', optionsMsg)
 
-                    transformName = t.name;
-                }
+        transfomsList.push(transformation)
+      } catch (err) {
+        if (err.code === 'MODULE_NOT_FOUND') {
+          gutil.log(gutil.colors.red('Error:'), 'Transform does not exist', gutil.colors.green(t))
+        } else {
+          gutil.log(gutil.colors.red('Error:'), err.message)
+        }
+      }
+    })
+  }
 
-                plugin = require(transformName);
-
-                transformation = plugin;
-
-                if(t.options && Object.keys(t.options).length) {
-
-                    optionsMsg = t.options;
-                    transformation = [plugin, t.options];
-                }
-
-                gutil.log('Transform:',  gutil.colors.green(transformName), 'with options:', optionsMsg);
-
-                transfomsList.push(transformation);
-            } catch (err) {
-
-                if (err.code === 'MODULE_NOT_FOUND') {
-
-                    gutil.log(gutil.colors.red('Error:'), 'Transform does not exist', gutil.colors.green(t));
-                } else {
-
-                    gutil.log(gutil.colors.red('Error:'), err.message);
-                }
-            }
-        });
-    }
-
-    return transfomsList;
+  return transfomsList
 }
 
 /**
@@ -507,28 +438,26 @@ function requireTransforms(transforms) {
  * @param {string} subTaskWatch
  * @param {Object} subTask
  */
-function setWatch(subTaskName, subTaskWatch, subTask) {
+function setWatch (subTaskName, subTaskWatch, subTask) {
+  var watch = []
+  var task = {}
 
-    var watch = [],
-        task = {};
+  watch = setWatchPaths(subTask)
 
-    watch = setWatchPaths(subTask);
+  gulp.task(subTaskWatch, function () {
+    watch.forEach(function (watchPath, i) {
+      watchPath = minimizePath(watchPath)
+      gutil.log('Watching path' + i + ':', gutil.colors.magenta(watchPath))
+    })
 
-    gulp.task(subTaskWatch, function() {
+    task = gulp.watch(watch, [subTaskName])
 
-        watch.forEach(function(watchPath, i) {
-            watchPath = minimizePath(watchPath);
-            gutil.log('Watching path' + i + ':', gutil.colors.magenta(watchPath));
-        });
+      .on('change', function (event) {
+        gutil.log('File:', gutil.colors.magenta(event.path), 'was', gutil.colors.green(event.type))
+      })
 
-        task = gulp.watch(watch, [subTaskName])
-
-            .on('change', function(event) {
-                gutil.log('File:', gutil.colors.magenta(event.path), 'was', gutil.colors.green(event.type));
-            });
-
-        return task;
-    });
+    return task
+  })
 }
 
 /**
@@ -537,26 +466,21 @@ function setWatch(subTaskName, subTaskWatch, subTask) {
  * @param {Object} subTask
  * @returns {Array}
  */
-function setWatchPaths(subTask) {
+function setWatchPaths (subTask) {
+  var watch = []
+  var include = []
+  var exclude = []
 
-    var watch = [],
-        include = [],
-        exclude = [];
+  if (Array.isArray(subTask.watch) && subTask.watch.length) {
+    watch = watch.concat(setFullPaths(subTask.watch))
+  } else if (subTask.watch === true) {
+    include = setFullPaths(subTask.src.include)
+    exclude = setFullPaths(subTask.src.exclude)
 
-    if (Array.isArray(subTask.watch) && subTask.watch.length) {
+    watch = watch.concat(include, exclude)
+  }
 
-        watch = watch.concat(setFullPaths(subTask.watch));
-
-    } else if (subTask.watch === true) {
-
-        include = setFullPaths(subTask.src.include);
-        exclude = setFullPaths(subTask.src.exclude);
-
-        watch = watch.concat(include, exclude);
-
-    }
-
-    return watch;
+  return watch
 }
 
 /**
@@ -565,21 +489,18 @@ function setWatchPaths(subTask) {
  * @param {Array} src
  * @returns {Array}
  */
-function setFullPaths(paths) {
+function setFullPaths (paths) {
+  var _paths = []
 
-    var _paths = [];
+  if (paths instanceof Array) {
+    paths.forEach(function (path) {
+      // Возможность использовать относительный путь
+      // _paths.push(rootPath + path);
+      _paths.push(path)
+    })
+  }
 
-    if(paths instanceof Array) {
-
-        paths.forEach(function(path) {
-
-            // Возможность использовать относительный путь
-            //_paths.push(rootPath + path);
-            _paths.push(path);
-        });
-    }
-
-    return _paths;
+  return _paths
 }
 
 /**
@@ -590,18 +511,16 @@ function setFullPaths(paths) {
  * @param {Array} plugins
  * @returns {*}
  */
-function setPipes(task, plugins, sourcemaps) {
+function setPipes (task, plugins, sourcemaps) {
+  if (Array.isArray(plugins) && plugins.length) {
+    gutil.log('Sourcemap enabled:', gutil.colors.blue(sourcemaps))
 
-    if(Array.isArray(plugins) && plugins.length) {
+    task = setSourceMaps(task, sourcemaps, plugins)
+  } else {
+    gutil.log(gutil.colors.yellow('Warning:'), 'no plugins')
+  }
 
-        gutil.log('Sourcemap enabled:', gutil.colors.blue(sourcemaps));
-
-        task = setSourceMaps(task, sourcemaps, plugins);
-    } else {
-        gutil.log(gutil.colors.yellow('Warning:'), 'no plugins');
-    }
-
-    return task;
+  return task
 }
 
 /**
@@ -612,28 +531,24 @@ function setPipes(task, plugins, sourcemaps) {
  * @param {Array} plugins
  * @returns {*}
  */
-function setSourceMaps(task, sourcemaps, plugins) {
+function setSourceMaps (task, sourcemaps, plugins) {
+  var pipe = null
 
-    var pipe = null;
+  if (sourcemaps) {
+    pipe = pluginExist('gulp-sourcemaps')
+  }
 
-    if(sourcemaps) {
-        pipe = pluginExist('gulp-sourcemaps');
-    }
+  if (pipe) {
+    task = task.pipe(pipe.init({loadMaps: true}))
+  }
 
-    if(pipe) {
-        task = task.pipe(pipe.init({loadMaps: true}));
-    }
+  task = setPlugins(task, plugins)
 
-    task = setPlugins(task, plugins);
+  if (pipe) {
+    task = task.pipe(pipe.write('./maps'))
+  }
 
-
-    if(pipe) {
-        task = task.pipe(pipe.write('./maps'));
-
-
-    }
-
-    return task;
+  return task
 }
 
 /**
@@ -643,32 +558,27 @@ function setSourceMaps(task, sourcemaps, plugins) {
  * @param {Array} plugins
  * @returns {*}
  */
-function setPlugins(task, plugins) {
+function setPlugins (task, plugins) {
+  plugins.forEach(function (plugin, i) {
+    gutil.colors.yellow('no options')
 
-    plugins.forEach(function(plugin, i) {
+    var sourcePlugin = pluginExist(plugin.name)
 
-        gutil.colors.yellow('no options');
+    if (sourcePlugin) {
+      task = task.pipe(sourcePlugin(plugin.options))
 
-        var sourcePlugin = pluginExist(plugin.name);
+      gutil.log('Plugin:',
+        gutil.colors.green(plugin.name),
+        'with options:',
+        plugin.options || gutil.colors.yellow('no options')
+      )
+    } else {
+      gutil.log(gutil.colors.red('Error:'), 'Plugin', gutil.colors.green(plugin.name), 'not found')
+    }
+  })
 
-        if(sourcePlugin) {
-
-            task = task.pipe(sourcePlugin(plugin.options));
-
-            gutil.log('Plugin:',
-                gutil.colors.green(plugin.name),
-                'with options:',
-                plugin.options || gutil.colors.yellow('no options')
-            );
-        } else {
-
-            gutil.log(gutil.colors.red('Error:'), 'Plugin', gutil.colors.green(plugin.name), 'not found');
-        }
-    });
-
-    return task;
+  return task
 }
-
 
 /**
  * Check if plugin exists
@@ -676,13 +586,12 @@ function setPlugins(task, plugins) {
  * @param {String} pluginName
  * @returns {Function}
  */
-function pluginExist(pluginName) {
-
-    try {
-        return require(pluginName);
-    } catch(err) {
-        return false;
-    }
+function pluginExist (pluginName) {
+  try {
+    return require(pluginName)
+  } catch (err) {
+    return false
+  }
 }
 
 /**
@@ -691,12 +600,10 @@ function pluginExist(pluginName) {
  * @param {String} configsPath
  * @returns {Array}
  */
-function getConfigFiles(configsPath) {
+function getConfigFiles (configsPath) {
+  var files = glob.sync(configsPath + '/**/*.{json,js}')
 
-    var files = glob.sync(configsPath + '/**/*.{json,js}');
-
-    return files;
-
+  return files
 }
 
 /**
@@ -705,28 +612,23 @@ function getConfigFiles(configsPath) {
  * @param {string} fileName
  * @returns {Object}
  */
-function getConfigFromFile(fileName) {
+function getConfigFromFile (fileName) {
+  if (!fileExists(fileName)) {
+    gutil.log(gutil.colors.red('Error:'), 'config file doesn\'t exist')
+    return false
+  }
 
-    if(!fileExists(fileName)) {
-
-        gutil.log(gutil.colors.red('Error:'), 'config file doesn\'t exist');
-        return false;
-    }
-
-    return require(fileName);
+  return require(fileName)
 }
-
 
 /**
  * Generate random string for task name
  * @access private
  * @returns {string}
  */
-function randomTaskName() {
-
-    return Math.random().toString(36).substring(7);
+function randomTaskName () {
+  return Math.random().toString(36).substring(7)
 }
-
 
 /**
  * Validate task configs
@@ -758,33 +660,26 @@ function randomTaskName() {
  *   }
  * ]
  */
-function setConfigs(configs, env) {
+function setConfigs (configs, env) {
+  var _configs = []
 
-    var _configs = [];
+  if (Array.isArray(configs) && configs.length) {
+    configs.filter(function (config) {
+      if (!Object.keys(config).length) {
+        gutil.log(gutil.colors.yellow('Warning:'), 'empty config is passed')
+        return false
+      }
 
-    if(Array.isArray(configs) && configs.length) {
+      _configs.push(setConfigEnvironment(config, env))
 
-        configs.filter(function(config) {
+      return true
+    })
 
-            if (!Object.keys(config).length) {
-
-                gutil.log(gutil.colors.yellow('Warning:'), 'empty config is passed');
-                return false;
-            }
-
-            _configs.push(setConfigEnvironment(config, env));
-
-            return true;
-
-        });
-
-        return _configs;
-
-    } else {
-
-        gutil.log(gutil.colors.red('Error:'),'must be array of configuration objects');
-        process.exit(1);
-    }
+    return _configs
+  } else {
+    gutil.log(gutil.colors.red('Error:'), 'must be array of configuration objects')
+    process.exit(1)
+  }
 }
 
 /**
@@ -793,27 +688,22 @@ function setConfigs(configs, env) {
  * @param env
  * @returns {*}
  */
-function setConfigEnvironment(config, env) {
+function setConfigEnvironment (config, env) {
+  var subTasks = config.subTasks
 
-    var subTasks = config.subTasks;
+  subTasks.forEach(function (task) {
+    for (var item in task) {
+      if (hasEnviromentInItem(task[item])) {
+        task[item] = selectEnviroment(task[item], env)
+      } else if (item === 'plugins' && task['plugins'] !== '~') {
+        task['plugins'] = getEnviromentPlugins(task['plugins'], env)
+      }
 
-    subTasks.forEach(function (task) {
+      task._env = env
+    }
+  })
 
-        for(item in task) {
-
-            if(hasEnviromentInItem(task[item])) {
-
-                task[item] = selectEnviroment(task[item], env);
-            } else if(item === 'plugins' && task['plugins'] !== '~') {
-
-                task['plugins'] = getEnviromentPlugins(task['plugins'], env);
-            }
-
-            task._env = env;
-        }
-    });
-
-    return config;
+  return config
 }
 
 /**
@@ -822,28 +712,22 @@ function setConfigEnvironment(config, env) {
  * @param env
  * @returns {*|{TAG, CLASS, ATTR, CHILD, PSEUDO}|Array.<T>}
  */
-function getEnviromentPlugins(plugins, env) {
+function getEnviromentPlugins (plugins, env) {
+  plugins = plugins.filter(function (plugin) {
+    if (plugin.env && plugin.env !== env) {
+      return false
+    } else {
+      return true
+    }
+  })
 
-    plugins = plugins.filter(function (plugin) {
+  plugins.forEach(function (plugin) {
+    if (plugin['options']) {
+      plugin['options'] = getEnviromentFromPluginOptions(plugin['options'])
+    }
+  })
 
-        if(plugin.env && plugin.env !== env) {
-
-            return false;
-        } else {
-
-            return true;
-        }
-    });
-
-    plugins.forEach(function (plugin) {
-
-        if(plugin['options']) {
-
-            plugin['options'] = getEnviromentFromPluginOptions(plugin['options']);
-        }
-    });
-
-    return plugins;
+  return plugins
 }
 
 /**
@@ -852,14 +736,12 @@ function getEnviromentPlugins(plugins, env) {
  * @param env
  * @returns {*}
  */
-function getEnviromentFromPluginOptions(options, env) {
+function getEnviromentFromPluginOptions (options, env) {
+  if (hasEnviromentInItem(options)) {
+    options = selectEnviroment(options, env)
+  }
 
-    if(hasEnviromentInItem(options)) {
-
-        options = selectEnviroment(options, env);
-    }
-
-    return options;
+  return options
 }
 
 /**
@@ -867,17 +749,14 @@ function getEnviromentFromPluginOptions(options, env) {
  * @param items
  * @param env
  */
-function selectEnviroment(item, env) {
+function selectEnviroment (item, env) {
+  if (item[env] !== undefined) {
+    item = item[env]
+  } else {
+    item = item[Object.keys(item)[0]]
+  }
 
-    if(item[env] !== undefined) {
-
-        item = item[env];
-    } else {
-
-        item = item[Object.keys(item)[0]];
-    }
-
-    return item;
+  return item
 }
 
 /**
@@ -885,47 +764,41 @@ function selectEnviroment(item, env) {
  * @param item
  * @returns {boolean}
  */
-function hasEnviromentInItem(item) {
-
-    for (var i = 0; i < enviroments.length; i++) {
-
-        if (item[enviroments[i]]) {
-
-            return true;
-            break;
-        }
-
-        return false;
+function hasEnviromentInItem (item) {
+  for (var i = 0; i < enviroments.length; i++) {
+    if (item[enviroments[i]]) {
+      return true
+      // break
     }
+
+    return false
+  }
 }
+
 /**
  * Parse configs content
  * @access public
  * @param {String} configsPath - path to configurations
  * @returns {Array} configs - array with configuration objects
  */
-function getConfigs(configsPath) {
+function getConfigs (configsPath) {
+  var configs = []
+  var _configsPath = configsPath ? path.join(rootPath, configsPath) : path.join(rootPath, 'configs')
+  var files = getConfigFiles(_configsPath)
 
-    var configs = [],
-        configsPath = configsPath ? path.join(rootPath, configsPath) : path.join(rootPath, 'configs'),
-        files = getConfigFiles(configsPath);
+  if (Array.isArray(files) && files.length) {
+    files.forEach(function (file) {
+      var config = getConfigFromFile(file)
 
+      if (config) {
+        configs.push(config)
+      }
+    })
+  }
 
-    if(Array.isArray(files) && files.length) {
-
-        files.forEach(function(file) {
-
-            var config = getConfigFromFile(file);
-
-            if(config) {
-
-                configs.push(config);
-            }
-        });
-    }
-
-    return configs;
+  return configs
 }
+
 /**
  * Define and return tasks
  * @access public
@@ -934,25 +807,24 @@ function getConfigs(configsPath) {
  * @param {Array} taskCompletion - callbacj on task compleation
  * @returns {Array} tasks - array of all tasks
  */
-function createTasks(gulpInstance, configs, taskCompletion) {
+function createTasks (gulpInstance, configs, taskCompletion) {
+  var argv = minimist(process.argv)
+  var env = argv.env || 'dev'
 
-    var argv = minimist(process.argv),
-        env = argv.env || 'dev';
+  if (argv.env) {
+    gutil.log('Environment is set to:', gutil.colors.blue(env))
+  }
 
-    if(argv.env) {
-        gutil.log('Environment is set to:', gutil.colors.blue(env));
-    }
+  // Gulp
+  gulp = gulpInstance
 
-    // Gulp
-    gulp = gulpInstance;
+  var __configs = setConfigs(configs, env)
+  var _taskCompletion = taskCompletion || function (config) {}
 
-    var __configs = setConfigs(configs, env),
-        taskCompletion = taskCompletion || function(config) {};
-
-    return addTasks(__configs, taskCompletion);
+  return addTasks(__configs, _taskCompletion)
 }
 
 module.exports = {
-    getConfigs: getConfigs,
-    createTasks: createTasks
-};
+  getConfigs: getConfigs,
+  createTasks: createTasks
+}
