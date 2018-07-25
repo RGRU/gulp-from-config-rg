@@ -31,7 +31,7 @@ var enviroments = [
  * @access private
  * @returns {Array} tasks
  */
-function addTasks (configs, taskCompletion) {
+function addTasks (configs, taskCompletion, withoutExpire) {
   var tasks = []
   var subTasks
   var currentDate = new Date()
@@ -44,7 +44,9 @@ function addTasks (configs, taskCompletion) {
 
     if (taskName) {
 
-      if (expDate && expDate.getTime() < currentDate.getTime()) {
+      if (!withoutExpire &&
+          expDate &&
+          expDate.getTime() < currentDate.getTime()) {
 
         console.log('\n------------------\n')
         console.log('Expired Date: ','\x1b[33m', expired, '\x1b[0m')
@@ -824,6 +826,13 @@ function getConfigs (configsPath) {
 function createTasks (gulpInstance, configs, taskCompletion) {
   var argv = minimist(process.argv)
   var env = argv.env || 'dev'
+  var withoutExpire = argv.expire ? true : false
+
+  if (withoutExpire) {
+    gutil.log('\n')
+    gutil.log(gutil.colors.yellow('Without expire date mode: '), gutil.colors.green(withoutExpire))
+    gutil.log('\n')
+  }
 
   if (argv.env) {
     gutil.log('Environment is set to:', gutil.colors.blue(env))
@@ -835,7 +844,7 @@ function createTasks (gulpInstance, configs, taskCompletion) {
   var __configs = setConfigs(configs, env)
   var _taskCompletion = taskCompletion || function (config) {}
 
-  return addTasks(__configs, _taskCompletion)
+  return addTasks(__configs, _taskCompletion, withoutExpire)
 }
 
 module.exports = {
