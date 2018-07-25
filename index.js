@@ -826,7 +826,7 @@ function getConfigs (configsPath) {
 function createTasks (gulpInstance, configs, taskCompletion) {
   var argv = minimist(process.argv)
   var env = argv.env || 'dev'
-  var withoutExpire = argv.expire ? true : false
+  var withoutExpire = !!argv.no_expire || !!argv.ne
 
   if (withoutExpire) {
     gutil.log('\n')
