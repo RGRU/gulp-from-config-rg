@@ -137,6 +137,11 @@ var gulp = require('gulp'),
 ```
 > Example gulpfile.jsmake sure installing them
 
+## parameters
+
+If you want run task without expire date, add --expire parameter. For example, sudo -u admin gulp tmpl --expire
+> --expire parameter
+
 ## config
 
 ```javascript
