@@ -34,15 +34,29 @@ var enviroments = [
 function addTasks (configs, taskCompletion) {
   var tasks = []
   var subTasks
+  var currentDate = new Date()
 
   configs.forEach(function (config) {
     var taskName = config.name
+    var expired = config.expired
+    var isExpired = !isNaN(Date.parse(expired))
+    var expDate = expired && isExpired ? new Date(Date.parse(config.expired)) : null
 
     if (taskName) {
-      subTasks = createTask(config, taskCompletion)
-      gulp.task(taskName, subTasks, function () {})
 
-      tasks.push(taskName)
+      if (expDate && expDate.getTime() < currentDate.getTime()) {
+
+        console.log('\n------------------\n')
+        console.log('Expired Date: ','\x1b[33m', expired, '\x1b[0m')
+        console.log('The task ' + '-->','\x1b[32m', taskName , '\x1b[0m','<--' + ' has expired!')
+        console.log('\n------------------\n')
+
+      } else {
+        subTasks = createTask(config, taskCompletion)
+        gulp.task(taskName, subTasks, function () {})
+
+        tasks.push(taskName)
+      }
     } else {
       gutil.log(gutil.colors.red('Error:'), 'task name must be set')
     }
