@@ -79,6 +79,7 @@ var gulp = require('gulp'),
      *  Or define config
      */
     var task = {
+        expired: "07-22-2018" // task expired date
         name: "styles", // module task name
             subTasks: [
                 {
