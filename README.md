@@ -139,8 +139,8 @@ var gulp = require('gulp'),
 
 ## parameters
 
-If you want run task without expire date, add --expire parameter. For example, sudo -u admin gulp tmpl --expire
-> --expire parameter
+If you want run task without expire date, add --no_expire parameter or alias --ne. For example, sudo -u admin gulp tmpl --expire
+> --no_expire(--ne) parameter
 
 ## config
 
