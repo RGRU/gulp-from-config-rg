@@ -26,6 +26,38 @@ var enviroments = [
   'prod'
 ]
 
+var currentDate = new Date()
+
+/**
+ * Check expired date format
+ * @param expired
+ * @return {boolean}
+ */
+function isExpired (expired) {
+  return !isNaN(Date.parse(expired))
+}
+
+/**
+ * Return expired date
+ * @param expired
+ * @return {*}
+ */
+function expiredDate (expired) {
+  return expired && isExpired(expired) ? new Date(Date.parse(expired)) : null
+}
+
+/**
+ * Log expired tasks
+ * @param expired
+ * @param taskName
+ */
+function logExpiredTask (expired, taskName) {
+    console.log('\n------------------\n')
+    console.log('Expired Date: ','\x1b[33m', expired, '\x1b[0m')
+    console.log('The task ' + '-->','\x1b[32m', taskName , '\x1b[0m','<--' + ' has expired!')
+    console.log('\n------------------\n')
+}
+
 /**
  * Create gulp tasks
  * @access private
@@ -34,27 +66,22 @@ var enviroments = [
 function addTasks (configs, taskCompletion, withoutExpire) {
   var tasks = []
   var subTasks
-  var currentDate = new Date()
 
   configs.forEach(function (config) {
     var taskName = config.name
     var expired = config.expired
-    var isExpired = !isNaN(Date.parse(expired))
-    var expDate = expired && isExpired ? new Date(Date.parse(config.expired)) : null
+    var expDate = expiredDate(expired)
 
     if (taskName) {
 
-      if (!withoutExpire &&
-          expDate &&
-          expDate.getTime() < currentDate.getTime()) {
+      if (!withoutExpire
+          && expDate
+          && expDate.getTime() < currentDate.getTime()) {
 
-        console.log('\n------------------\n')
-        console.log('Expired Date: ','\x1b[33m', expired, '\x1b[0m')
-        console.log('The task ' + '-->','\x1b[32m', taskName , '\x1b[0m','<--' + ' has expired!')
-        console.log('\n------------------\n')
+        logExpiredTask(expired, taskName)
 
       } else {
-        subTasks = createTask(config, taskCompletion)
+        subTasks = createTask(config, taskCompletion, withoutExpire)
         gulp.task(taskName, subTasks, function () {})
 
         tasks.push(taskName)
@@ -73,7 +100,7 @@ function addTasks (configs, taskCompletion, withoutExpire) {
  * @param {Object} config
  * @returns {Array}
  */
-function createTask (config, taskCompletion) {
+function createTask (config, taskCompletion, withoutExpire) {
   var subTasks = []
   var subTaskName = ''
   var storedTask = {}
@@ -81,6 +108,8 @@ function createTask (config, taskCompletion) {
 
   if (Array.isArray(config.subTasks) && config.subTasks.length) {
     config.subTasks.forEach(function (subTask) {
+      var subTaskExpired = subTask.expired
+      var expDate = expiredDate(subTaskExpired)
       tmp = checkForReuse(subTask, storedTask)
 
       subTask = tmp.current
@@ -93,9 +122,18 @@ function createTask (config, taskCompletion) {
       subTaskName = config.name + ':' + subTask.name
 
       if (isSubTaskValid(subTask)) {
-        createSubTask(subTaskName, subTask, config.name, taskCompletion)
 
-        subTasks.push(subTaskName)
+        if (!withoutExpire
+            && expDate
+            && expDate.getTime() < currentDate.getTime()) {
+
+            logExpiredTask(subTaskExpired, subTaskName)
+
+        } else {
+          createSubTask(subTaskName, subTask, config.name, taskCompletion)
+          subTasks.push(subTaskName)
+        }
+
       }
     })
   } else {
