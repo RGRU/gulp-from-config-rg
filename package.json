@@ -1,6 +1,6 @@
 {
   "name": "gulp-from-config-rg",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Library that helps you to build app with gulp from config file",
   "main": "index.js",
   "scripts": {
