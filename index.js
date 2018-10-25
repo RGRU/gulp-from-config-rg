@@ -216,7 +216,45 @@ function isSubTaskValid (task) {
 }
 
 /**
- * Cretate sub tasks of task
+ * Check no imgmin argument
+ * @returns {boolean}
+ */
+function imageMinNoParam () {
+  return process.argv.some(function (item) {
+    return /imgmin\s?=\s?no/g.test(item)
+  })
+}
+
+/**
+ * make Subtask plugins
+ * @param {Object} subTask
+ * @returns {*}
+ */
+function getSubtaskPlugins (subTask) {
+  var plugins
+  var imagemin
+
+  if (subTask.plugins && subTask.plugins.length > 0) {
+    imagemin = subTask.plugins
+      .filter(function (plugin) {
+        return plugin.name === 'gulp-imagemin'
+      })
+      .reduce(function (accumulator, current) {
+        return current
+      }, null)
+  }
+
+  if (imagemin && imageMinNoParam()) {
+    plugins = []
+  } else {
+    plugins = subTask.plugins
+  }
+
+  return plugins
+}
+
+/**
+ * Create sub tasks of task
  * @access private
  * @param {string} subTaskName
  * @param {Object} subTask
@@ -254,7 +292,7 @@ function createSubTask (subTaskName, subTask, taskName, taskCompletion) {
     } else {
       task = setSrc(subTask.src)
 
-      task = setPipes(task, subTask.plugins, subTask.sourcemaps)
+      task = setPipes(task, getSubtaskPlugins(subTask), subTask.sourcemaps)
 
       task = task.pipe(gulp.dest(dest))
     }
@@ -414,7 +452,7 @@ function runWatchifyTask (subTask, taskName, b, dest) {
   b = b.pipe(source(file))
   b = b.pipe(buffer())
 
-  b = setPipes(b, subTask.plugins, subTask.sourcemaps)
+  b = setPipes(b, getSubtaskPlugins(subTask), subTask.sourcemaps)
 
   b = b.pipe(gulp.dest(dest))
 

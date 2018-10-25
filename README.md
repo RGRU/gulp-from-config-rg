@@ -142,6 +142,10 @@ var gulp = require('gulp'),
 If you want run task without expire date, add --no_expire parameter or alias --ne. For example, sudo -u admin gulp tmpl --expire
 > --no_expire(--ne) parameter
 
+If you want run task without gulp-imagemin plugin, add --imgmin=no parameter. For example, sudo -u admin gulp tmpl --imgmin=no
+> --imgmin=no parameter
+
+
 ## config
 
 ```javascript
